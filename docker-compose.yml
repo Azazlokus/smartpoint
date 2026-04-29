@@ -1,0 +1,220 @@
+version: '3.8'
+
+services:
+
+  # ─── PHP-FPM application ─────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartpoint_app
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    networks:
+      - smartpoint
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-smartpoint}
+      DB_USERNAME: ${DB_USERNAME:-smartpoint}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+
+  # ─── Nginx web server ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: smartpoint_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - smartpoint
+    depends_on:
+      - app
+
+  # ─── MySQL database ───────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: smartpoint_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-smartpoint}
+      MYSQL_USER: ${DB_USERNAME:-smartpoint}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - smartpoint
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: smartpoint_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - smartpoint
+    ports:
+      - "6379:6379"
+
+  # ─── Laravel Horizon (queue worker) ──────────────────────────────────────
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartpoint_horizon
+    restart: unless-stopped
+    command: php artisan horizon
+    volumes:
+      - .:/var/www
+    networks:
+      - smartpoint
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-smartpoint}
+      DB_USERNAME: ${DB_USERNAME:-smartpoint}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+
+  # ─── Laravel Scheduler ────────────────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartpoint_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www
+    networks:
+      - smartpoint
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-smartpoint}
+      DB_USERNAME: ${DB_USERNAME:-smartpoint}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+
+  # ─── Adminer (DB GUI) ─────────────────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: smartpoint_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - smartpoint
+    depends_on:
+      - mysql
+
+  # ─── ELK: Elasticsearch ───────────────────────────────────────────────────
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    container_name: smartpoint_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - smartpoint
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|yellow\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # ─── ELK: Logstash ────────────────────────────────────────────────────────
+  # Принимает структурированные JSON-логи от Laravel по TCP (порт 5000),
+  # обогащает и пишет в Elasticsearch с ежедневной ротацией индексов.
+  logstash:
+    image: logstash:8.13.0
+    container_name: smartpoint_logstash
+    restart: unless-stopped
+    volumes:
+      - ./docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./docker/logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
+    networks:
+      - smartpoint
+    ports:
+      - "5000:5000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # ─── ELK: Kibana ──────────────────────────────────────────────────────────
+  kibana:
+    image: kibana:8.13.0
+    container_name: smartpoint_kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - smartpoint
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  redis_data:
+  elasticsearch_data:
+
+networks:
+  smartpoint:
+    driver: bridge

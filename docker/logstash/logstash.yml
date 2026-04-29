@@ -1,0 +1,7 @@
+http.host: "0.0.0.0"
+
+# Отключаем мониторинг — для локальной разработки не нужен
+xpack.monitoring.enabled: false
+
+# Логи самого Logstash — только предупреждения и ошибки
+log.level: warn

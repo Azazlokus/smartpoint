@@ -1,0 +1,408 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "SmartPoint — Cat Blog Monitor API",
+        "description": "REST API для управления блогами в системе мониторинга кошачьих блогов.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "API v1"
+        }
+    ],
+    "paths": {
+        "/blogs": {
+            "get": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Список блогов",
+                "description": "Возвращает список блогов на мониторинге.\n\n**Фильтрация** (`filter[поле]=значение`):\n- `filter[name]` — поиск по названию блога (LIKE)\n- `filter[resource_id]` — точное совпадение по ID источника\n- `filter[rating_from]` — минимальный рейтинг (≥ значение)\n\n**Сортировка** (`sort=значение`):\n`rating_asc`, `rating_desc`, `name_asc`, `name_desc`, `newest`\n\n**Пагинация**: `page` и `per_page` (1–100, по умолчанию 20).",
+                "operationId": "bd1a56cae269d6899f22719d2109eb85",
+                "parameters": [
+                    {
+                        "name": "filter[name]",
+                        "in": "query",
+                        "description": "Поиск по названию",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Мурзик"
+                        }
+                    },
+                    {
+                        "name": "filter[resource_id]",
+                        "in": "query",
+                        "description": "ID источника",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "filter[rating_from]",
+                        "in": "query",
+                        "description": "Минимальный рейтинг",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "example": 4
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Сортировка",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "rating_desc",
+                            "enum": [
+                                "rating_asc",
+                                "rating_desc",
+                                "name_asc",
+                                "name_desc",
+                                "newest"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Записей на страницу",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 20,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Номер страницы",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список блогов",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlogCollection"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Добавить блог",
+                "description": "Добавляет блог на мониторинг. Первая проверка будет выполнена немедленно.",
+                "operationId": "615f74e902693b79771f65fbb3321d87",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreBlogRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Блог успешно добавлен",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlogResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/blogs/{id}": {
+            "get": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Один блог",
+                "description": "Возвращает детали одного блога по его ID.",
+                "operationId": "4e5fdc0f7743321fb593f04c6b936b93",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID блога",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Блог найден",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlogResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Блог не найден"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Удалить блог",
+                "description": "Снимает блог с мониторинга (удаляет из системы).",
+                "operationId": "e53f1e6726e4cd322f2d443c855a6aaa",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID блога",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Блог снят с мониторинга",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Блог снят с мониторинга."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Блог не найден"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ResourceObject": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Mock Source"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "mock"
+                    }
+                },
+                "type": "object"
+            },
+            "Blog": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "external_id": {
+                        "type": "string",
+                        "example": "blog_42"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Мурзик daily"
+                    },
+                    "rating": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 4.8
+                    },
+                    "cat_name": {
+                        "type": "string",
+                        "example": "Мурзик",
+                        "nullable": true
+                    },
+                    "author": {
+                        "type": "string",
+                        "example": "Иван",
+                        "nullable": true
+                    },
+                    "monitor_frequency_hours": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "next_check_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-04-26T12:00:00+00:00",
+                        "nullable": true
+                    },
+                    "resource": {
+                        "$ref": "#/components/schemas/ResourceObject"
+                    }
+                },
+                "type": "object"
+            },
+            "BlogCollection": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Список блогов получен."
+                    },
+                    "data": {
+                        "properties": {
+                            "pagination": {
+                                "properties": {
+                                    "page": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "per_page": {
+                                        "type": "integer",
+                                        "example": 20
+                                    },
+                                    "total": {
+                                        "type": "integer",
+                                        "example": 100
+                                    },
+                                    "last_page": {
+                                        "type": "integer",
+                                        "example": 5
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Blog"
+                                }
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "BlogResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Блог найден."
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/Blog"
+                    }
+                },
+                "type": "object"
+            },
+            "StoreBlogRequest": {
+                "required": [
+                    "resource_id",
+                    "external_id",
+                    "monitor_frequency_hours"
+                ],
+                "properties": {
+                    "resource_id": {
+                        "description": "ID источника",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "external_id": {
+                        "description": "ID блога на стороне источника",
+                        "type": "string",
+                        "example": "blog_42"
+                    },
+                    "monitor_frequency_hours": {
+                        "description": "Частота мониторинга (4–8 часов)",
+                        "type": "integer",
+                        "example": 4,
+                        "maximum": 8,
+                        "minimum": 4
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Ошибка валидации."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Blogs",
+            "description": "Blogs"
+        }
+    ]
+}
