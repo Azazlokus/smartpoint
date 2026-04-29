@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Adapters\MockAdapter;
 
 return [
     /*
@@ -15,6 +16,6 @@ return [
     |
     */
     'adapters' => [
-        'mock' => \App\Adapters\MockAdapter::class,
+        'mock' => MockAdapter::class,
     ],
 ];

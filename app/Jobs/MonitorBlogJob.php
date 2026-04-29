@@ -7,7 +7,6 @@ namespace App\Jobs;
 use App\Jobs\Middleware\ThrottleBySource;
 use App\Models\Blog;
 use App\Services\Contracts\MonitoringServiceInterface;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,9 +14,10 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
+final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -90,11 +90,11 @@ final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
         $this->scheduleNextCheck();
 
         Log::error('monitoring.failed', [
-            'blog_id'            => $this->blog->id,
-            'external_id'        => $this->blog->external_id,
-            'source'             => $this->blog->resource->slug,
+            'blog_id' => $this->blog->id,
+            'external_id' => $this->blog->external_id,
+            'source' => $this->blog->resource->slug,
             'monitoring_failures' => $this->blog->monitoring_failures,
-            'error'              => $exception->getMessage(),
+            'error' => $exception->getMessage(),
         ]);
     }
 

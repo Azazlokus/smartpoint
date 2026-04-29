@@ -32,7 +32,7 @@ final class AddBlogToMonitoringTest extends TestCase
             ->assertSuccessful();
 
         $this->assertDatabaseHas('blogs', [
-            'external_id'             => 'blog_42',
+            'external_id' => 'blog_42',
             'monitor_frequency_hours' => 8,
         ]);
     }

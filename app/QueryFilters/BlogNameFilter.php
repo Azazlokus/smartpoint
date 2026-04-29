@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace App\QueryFilters;
 
+use App\Models\Blog;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\QueryBuilder\Filters\Filter;
 
 /**
  * Поиск по названию блога (нечувствительный к регистру).
  *
- * @implements Filter<\App\Models\Blog>
+ * @implements Filter<Blog>
  */
 final class BlogNameFilter implements Filter
 {
     public function __invoke(Builder $query, mixed $value, string $property): void
     {
-        $query->where('blogs.name', 'like', '%' . $value . '%');
+        $query->where('blogs.name', 'like', '%'.$value.'%');
     }
 }

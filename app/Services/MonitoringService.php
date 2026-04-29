@@ -26,7 +26,7 @@ final class MonitoringService implements MonitoringServiceInterface
 
         // Получаем данные из источника ДО открытия транзакции —
         // держать соединение с БД открытым во время сетевого вызова опасно.
-        $meta  = $adapter->fetchBlogMeta($blog->external_id);
+        $meta = $adapter->fetchBlogMeta($blog->external_id);
         $posts = $adapter->fetchPosts($blog->external_id);
 
         // Все записи в БД атомарны: если любой шаг упадёт —
@@ -39,24 +39,24 @@ final class MonitoringService implements MonitoringServiceInterface
             $newPosts = $this->syncPosts($blog, $posts);
 
             MonitoringLog::create([
-                'blog_id'   => $blog->id,
-                'date'      => Carbon::now(),
+                'blog_id' => $blog->id,
+                'date' => Carbon::now(),
                 'new_posts' => $newPosts,
             ]);
 
             // Фиксируем успешный цикл: сбрасываем счётчик неудач.
             $blog->update([
-                'last_monitored_at'   => Carbon::now(),
+                'last_monitored_at' => Carbon::now(),
                 'monitoring_failures' => 0,
             ]);
         });
 
         Log::info('monitoring.completed', [
-            'blog_id'       => $blog->id,
-            'external_id'   => $blog->external_id,
-            'source'        => $blog->resource->slug,
+            'blog_id' => $blog->id,
+            'external_id' => $blog->external_id,
+            'source' => $blog->resource->slug,
             'posts_fetched' => count($posts),
-            'new_posts'     => count($newPosts),
+            'new_posts' => count($newPosts),
         ]);
     }
 

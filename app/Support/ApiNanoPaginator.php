@@ -30,8 +30,9 @@ final class ApiNanoPaginator
      * Выполняет запрос с пагинацией и трансформирует результат через JsonResource.
      *
      * @template TModel of Model
+     *
      * @param  Builder<TModel>|QueryBuilder<TModel>  $queryBuilder
-     * @param  class-string<JsonResource>            $resourceClass
+     * @param  class-string<JsonResource>  $resourceClass
      * @return array<string, mixed>
      */
     public static function paginate(
@@ -48,13 +49,13 @@ final class ApiNanoPaginator
         /** @var Fluent<string, int> $parameters */
         $parameters = new Fluent(validator(
             [
-                'page'     => $page     ?? self::DEFAULT_PAGE,
-                'per_page' => $perPage  ?? self::DEFAULT_PER_PAGE,
+                'page' => $page ?? self::DEFAULT_PAGE,
+                'per_page' => $perPage ?? self::DEFAULT_PER_PAGE,
             ],
             [
-                'page'     => ['integer', 'min:1'],
-                'per_page' => ['integer', 'min:1', 'max:' . self::MAX_PER_PAGE],
-            ]
+                'page' => ['integer', 'min:1'],
+                'per_page' => ['integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
+            ],
         )->validate());
 
         $result = $queryBuilder->paginate(
@@ -66,9 +67,9 @@ final class ApiNanoPaginator
 
         return [
             'pagination' => [
-                'page'      => $parameters->get('page'),
-                'per_page'  => $result->perPage(),
-                'total'     => $result->total(),
+                'page' => $parameters->get('page'),
+                'per_page' => $result->perPage(),
+                'total' => $result->total(),
                 'last_page' => $result->lastPage(),
             ],
             'items' => $resourceClass::collection($result->items())->toArray($request),

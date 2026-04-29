@@ -128,13 +128,13 @@ return [
         // Monolog LogstashFormatter создаёт формат, понятный ELK из коробки.
         // Канал подключается лениво — если Logstash недоступен, лог просто пропустится.
         'logstash' => [
-            'driver'       => 'monolog',
-            'handler'      => SocketHandler::class,
+            'driver' => 'monolog',
+            'handler' => SocketHandler::class,
             'handler_with' => [
                 'connectionString' => env('LOGSTASH_HOST', 'tcp://logstash:5000'),
-                'persistent'       => true,
+                'persistent' => true,
             ],
-            'formatter'      => LogstashFormatter::class,
+            'formatter' => LogstashFormatter::class,
             'formatter_with' => [
                 'applicationName' => env('APP_NAME', 'smartpoint'),
             ],

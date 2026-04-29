@@ -26,12 +26,12 @@ final class BlogIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'filter.name'        => ['sometimes', 'string', 'max:255'],
+            'filter.name' => ['sometimes', 'string', 'max:255'],
             'filter.resource_id' => ['sometimes', 'integer', 'exists:resources,id'],
             'filter.rating_from' => ['sometimes', 'numeric', 'min:0'],
-            'sort'               => ['sometimes', 'string', 'in:rating_asc,rating_desc,name_asc,name_desc,newest'],
-            'per_page'           => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'page'               => ['sometimes', 'integer', 'min:1'],
+            'sort' => ['sometimes', 'string', 'in:rating_asc,rating_desc,name_asc,name_desc,newest'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
         ];
     }
 
@@ -49,7 +49,7 @@ final class BlogIndexRequest extends FormRequest
     protected function failedValidation(Validator $validator): never
     {
         throw new HttpResponseException(
-            Api::unprocessableEntity('Ошибка валидации.', $validator->errors()->toArray())
+            Api::unprocessableEntity('Ошибка валидации.', $validator->errors()->toArray()),
         );
     }
 }

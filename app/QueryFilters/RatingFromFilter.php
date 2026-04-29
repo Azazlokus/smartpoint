@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\QueryFilters;
 
+use App\Models\Blog;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\QueryBuilder\Filters\Filter;
 
 /**
  * Фильтр по минимальному рейтингу блога.
  *
- * @implements Filter<\App\Models\Blog>
+ * @implements Filter<Blog>
  */
 final class RatingFromFilter implements Filter
 {

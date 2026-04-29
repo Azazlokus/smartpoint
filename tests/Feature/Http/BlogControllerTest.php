@@ -27,7 +27,7 @@ final class BlogControllerTest extends TestCase
                 'message',
                 'data' => [
                     'pagination' => ['page', 'per_page', 'total', 'last_page'],
-                    'items'      => [['id', 'external_id', 'name', 'resource']],
+                    'items' => [['id', 'external_id', 'name', 'resource']],
                 ],
             ]);
     }
@@ -146,8 +146,8 @@ final class BlogControllerTest extends TestCase
         $resource = Resource::factory()->mock()->create();
 
         $this->postJson('/api/v1/blogs', [
-            'resource_id'             => $resource->id,
-            'external_id'             => 'blog_99',
+            'resource_id' => $resource->id,
+            'external_id' => 'blog_99',
             'monitor_frequency_hours' => 6,
         ])
             ->assertCreated()
@@ -165,8 +165,8 @@ final class BlogControllerTest extends TestCase
         $resource = Resource::factory()->mock()->create();
 
         $this->postJson('/api/v1/blogs', [
-            'resource_id'             => $resource->id,
-            'external_id'             => 'blog_99',
+            'resource_id' => $resource->id,
+            'external_id' => 'blog_99',
             'monitor_frequency_hours' => 4,
         ])->assertCreated();
 
@@ -187,8 +187,8 @@ final class BlogControllerTest extends TestCase
         $resource = Resource::factory()->mock()->create();
 
         $this->postJson('/api/v1/blogs', [
-            'resource_id'             => $resource->id,
-            'external_id'             => 'blog_99',
+            'resource_id' => $resource->id,
+            'external_id' => 'blog_99',
             'monitor_frequency_hours' => 2,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['monitor_frequency_hours']);
@@ -197,8 +197,8 @@ final class BlogControllerTest extends TestCase
     public function test_store_validates_resource_exists(): void
     {
         $this->postJson('/api/v1/blogs', [
-            'resource_id'             => 99999,
-            'external_id'             => 'blog_99',
+            'resource_id' => 99999,
+            'external_id' => 'blog_99',
             'monitor_frequency_hours' => 4,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['resource_id']);
@@ -209,7 +209,7 @@ final class BlogControllerTest extends TestCase
     public function test_show_returns_blog(): void
     {
         $resource = Resource::factory()->mock()->create();
-        $blog     = Blog::factory()->for($resource)->create();
+        $blog = Blog::factory()->for($resource)->create();
 
         $this->getJson("/api/v1/blogs/{$blog->id}")
             ->assertOk()
@@ -227,7 +227,7 @@ final class BlogControllerTest extends TestCase
     public function test_destroy_removes_blog(): void
     {
         $resource = Resource::factory()->mock()->create();
-        $blog     = Blog::factory()->for($resource)->create();
+        $blog = Blog::factory()->for($resource)->create();
 
         $this->deleteJson("/api/v1/blogs/{$blog->id}")
             ->assertOk()

@@ -17,7 +17,7 @@ final class AdapterFactoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        /** @var array<string, class-string<\App\Adapters\BlogSourceAdapter>> $adapters */
+        /** @var array<string, class-string<BlogSourceAdapter>> $adapters */
         $adapters = config('monitoring.adapters');
         $this->factory = new AdapterFactory($adapters);
     }
