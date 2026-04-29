@@ -333,7 +333,7 @@ routes/
   console.php               # определение планировщика (каждую минуту)
 config/
   horizon.php               # конфигурация супервизоров Horizon
-docker/
+.docker/
   nginx/default.conf
 Dockerfile
 docker-compose.yml

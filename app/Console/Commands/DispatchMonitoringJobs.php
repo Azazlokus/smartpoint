@@ -12,14 +12,12 @@ use Illuminate\Support\Carbon;
 final class DispatchMonitoringJobs extends Command
 {
     /**
-     * Сигнатура консольной команды.
      *
      * @var string
      */
     protected $signature = 'monitoring:dispatch';
 
     /**
-     * Описание консольной команды.
      *
      * @var string
      */

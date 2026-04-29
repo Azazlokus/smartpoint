@@ -42,7 +42,7 @@ services:
       - "8000:80"
     volumes:
       - .:/var/www
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - smartpoint
     depends_on:
@@ -185,8 +185,8 @@ services:
     container_name: smartpoint_logstash
     restart: unless-stopped
     volumes:
-      - ./docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
-      - ./docker/logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
+      - ./.docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./.docker/logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
     networks:
       - smartpoint
     ports:
