@@ -60,9 +60,9 @@ final class DispatchMonitoringJobs extends Command
                     if (! $dryRun) {
                         MonitorBlogJob::dispatch($blog);
                     }
-                }
 
-                $dispatched += $blogs->count();
+                    $dispatched++;
+                }
             });
 
         $durationMs = (int) ((microtime(true) - $startedAt) * 1000);
