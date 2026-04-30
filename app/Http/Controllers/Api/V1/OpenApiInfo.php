@@ -38,6 +38,53 @@ use OpenApi\Attributes as OA;
     ],
 )]
 
+#[OA\Schema(
+    schema: 'MonitoringLogItem',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'date', type: 'string', format: 'date-time', example: '2026-04-30T12:00:00+00:00'),
+        new OA\Property(property: 'new_posts_count', type: 'integer', example: 3),
+        new OA\Property(
+            property: 'new_posts',
+            type: 'array',
+            items: new OA\Items(
+                properties: [
+                    new OA\Property(property: 'external_id', type: 'string', example: 'post_1'),
+                    new OA\Property(property: 'title', type: 'string', example: 'Мурзик гуляет'),
+                ],
+                type: 'object',
+            ),
+        ),
+    ],
+)]
+#[OA\Schema(
+    schema: 'MonitoringLogCollection',
+    properties: [
+        new OA\Property(property: 'message', type: 'string', example: 'Логи мониторинга получены.'),
+        new OA\Property(
+            property: 'data',
+            properties: [
+                new OA\Property(
+                    property: 'pagination',
+                    properties: [
+                        new OA\Property(property: 'page', type: 'integer', example: 1),
+                        new OA\Property(property: 'per_page', type: 'integer', example: 20),
+                        new OA\Property(property: 'total', type: 'integer', example: 5),
+                        new OA\Property(property: 'last_page', type: 'integer', example: 1),
+                    ],
+                    type: 'object',
+                ),
+                new OA\Property(
+                    property: 'items',
+                    type: 'array',
+                    items: new OA\Items(ref: '#/components/schemas/MonitoringLogItem'),
+                ),
+            ],
+            type: 'object',
+        ),
+    ],
+)]
+
 // Ответ для GET /blogs — обёртка ApiNanoPaginator
 #[OA\Schema(
     schema: 'BlogCollection',

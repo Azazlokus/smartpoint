@@ -12,13 +12,11 @@ use Illuminate\Support\Carbon;
 final class DispatchMonitoringJobs extends Command
 {
     /**
-     *
      * @var string
      */
     protected $signature = 'monitoring:dispatch';
 
     /**
-     *
      * @var string
      */
     protected $description = 'Диспатчит MonitorBlogJob для всех блогов, у которых наступило время проверки';

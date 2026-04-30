@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\BlogIndexRequest;
 use App\Http\Requests\StoreBlogRequest;
 use App\Http\Resources\BlogResource;
+use App\Http\Resources\MonitoringLogResource;
 use App\Models\Blog;
+use App\Models\MonitoringLog;
 use App\Models\Resource;
 use App\QueryFilters\BlogNameFilter;
 use App\QueryFilters\RatingFromFilter;
@@ -16,6 +18,7 @@ use App\QuerySorts\ColumnSort;
 use App\Support\Api;
 use App\Support\ApiNanoPaginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use OpenApi\Attributes as OA;
 use Spatie\QueryBuilder\AllowedFilter;
@@ -141,6 +144,41 @@ final class BlogController extends Controller
         $blog->load('resource');
 
         return Api::success('Блог найден.', (new BlogResource($blog))->toArray(request()));
+    }
+
+    /**
+     * История мониторинга блога.
+     */
+    #[OA\Get(
+        path: '/blogs/{id}/logs',
+        summary: 'История мониторинга',
+        description: 'Возвращает записи журнала мониторинга для блога, отсортированные от новых к старым.',
+        tags: ['Blogs'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID блога', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, description: 'Записей на страницу', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, example: 20)),
+            new OA\Parameter(name: 'page', in: 'query', required: false, description: 'Номер страницы', schema: new OA\Schema(type: 'integer', minimum: 1, example: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Логи мониторинга', content: new OA\JsonContent(ref: '#/components/schemas/MonitoringLogCollection')),
+            new OA\Response(response: 404, description: 'Блог не найден'),
+        ],
+    )]
+    public function logs(Blog $blog, Request $request): JsonResponse
+    {
+        $query = MonitoringLog::query()
+            ->where('blog_id', $blog->id)
+            ->orderByDesc('date');
+
+        $data = ApiNanoPaginator::paginate(
+            $query,
+            MonitoringLogResource::class,
+            $request->integer('page', 1),
+            $request->integer('per_page', 20),
+            $request,
+        );
+
+        return Api::success('Логи мониторинга получены.', $data);
     }
 
     /**

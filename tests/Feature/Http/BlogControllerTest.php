@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Http;
 
 use App\Models\Blog;
+use App\Models\MonitoringLog;
 use App\Models\Resource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -220,6 +221,89 @@ final class BlogControllerTest extends TestCase
     public function test_show_returns_404_for_unknown_blog(): void
     {
         $this->getJson('/api/v1/blogs/99999')->assertNotFound();
+    }
+
+    // ── GET /api/v1/blogs/{id}/logs ──────────────────────────────────────────
+
+    public function test_logs_returns_monitoring_history(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+
+        MonitoringLog::factory()->for($blog)->count(3)->create();
+
+        $this->getJson("/api/v1/blogs/{$blog->id}/logs")
+            ->assertOk()
+            ->assertJsonCount(3, 'data.items')
+            ->assertJsonStructure([
+                'message',
+                'data' => [
+                    'pagination' => ['page', 'per_page', 'total', 'last_page'],
+                    'items' => [['id', 'date', 'new_posts_count', 'new_posts']],
+                ],
+            ]);
+    }
+
+    public function test_logs_returns_empty_list_when_no_history(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+
+        $this->getJson("/api/v1/blogs/{$blog->id}/logs")
+            ->assertOk()
+            ->assertJsonCount(0, 'data.items')
+            ->assertJsonPath('data.pagination.total', 0);
+    }
+
+    public function test_logs_are_ordered_newest_first(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+
+        $old = MonitoringLog::factory()->for($blog)->create(['date' => now()->subDays(2)]);
+        $new = MonitoringLog::factory()->for($blog)->create(['date' => now()]);
+
+        $ids = collect($this->getJson("/api/v1/blogs/{$blog->id}/logs")->assertOk()->json('data.items'))
+            ->pluck('id')->all();
+
+        $this->assertSame([$new->id, $old->id], $ids);
+    }
+
+    public function test_logs_only_returns_logs_for_given_blog(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog1 = Blog::factory()->for($resource)->create();
+        $blog2 = Blog::factory()->for($resource)->create();
+
+        MonitoringLog::factory()->for($blog1)->count(2)->create();
+        MonitoringLog::factory()->for($blog2)->count(5)->create();
+
+        $this->getJson("/api/v1/blogs/{$blog1->id}/logs")
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 2);
+    }
+
+    public function test_logs_returns_404_for_unknown_blog(): void
+    {
+        $this->getJson('/api/v1/blogs/99999/logs')->assertNotFound();
+    }
+
+    public function test_logs_new_posts_count_matches_array_length(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+
+        MonitoringLog::factory()->for($blog)->create([
+            'new_posts' => [
+                ['external_id' => 'p1', 'title' => 'Первый пост'],
+                ['external_id' => 'p2', 'title' => 'Второй пост'],
+            ],
+        ]);
+
+        $this->getJson("/api/v1/blogs/{$blog->id}/logs")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.new_posts_count', 2)
+            ->assertJsonCount(2, 'data.items.0.new_posts');
     }
 
     // ── DELETE /api/v1/blogs/{id} ────────────────────────────────────────────

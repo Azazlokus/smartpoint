@@ -11,3 +11,5 @@ Route::apiResource('blogs', BlogController::class)->only([
     'show',
     'destroy',
 ]);
+
+Route::get('blogs/{blog}/logs', [BlogController::class, 'logs'])->name('blogs.logs');
