@@ -114,6 +114,23 @@ lint: pint-check stan
 ci: pint-check stan test
 	@echo "CI пройден успешно."
 
+# Те же цели без Docker (для локального запуска и GitHub Actions)
+.PHONY: pint-check-local
+pint-check-local:
+	./vendor/bin/pint --test
+
+.PHONY: stan-local
+stan-local:
+	./vendor/bin/phpstan analyse --memory-limit=512M
+
+.PHONY: test-local
+test-local:
+	php artisan test
+
+.PHONY: ci-local
+ci-local: pint-check-local stan-local test-local
+	@echo "CI пройден успешно."
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Утилиты
 # ──────────────────────────────────────────────────────────────────────────────

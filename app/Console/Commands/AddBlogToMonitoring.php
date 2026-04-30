@@ -30,9 +30,9 @@ final class AddBlogToMonitoring extends Command
 
     public function handle(): int
     {
-        $slug        = $this->argument('resource_slug');
-        $externalId  = $this->argument('external_id');
-        $frequency   = (int) $this->option('frequency');
+        $slug = $this->argument('resource_slug');
+        $externalId = $this->argument('external_id');
+        $frequency = (int) $this->option('frequency');
 
         if ($frequency < 4 || $frequency > 8) {
             $this->error('Частота мониторинга должна быть от 4 до 8 часов.');
@@ -44,7 +44,7 @@ final class AddBlogToMonitoring extends Command
 
         if ($resource === null) {
             $this->error("Активный источник со slug [{$slug}] не найден.");
-            $this->line('Доступные источники: ' . Resource::where('is_active', true)->pluck('slug')->join(', '));
+            $this->line('Доступные источники: '.Resource::where('is_active', true)->pluck('slug')->join(', '));
 
             return self::FAILURE;
         }
@@ -60,15 +60,15 @@ final class AddBlogToMonitoring extends Command
         }
 
         $blog = Blog::create([
-            'resource_id'             => $resource->id,
-            'external_id'             => $externalId,
-            'name'                    => $externalId,
-            'rating'                  => 0.0,
+            'resource_id' => $resource->id,
+            'external_id' => $externalId,
+            'name' => $externalId,
+            'rating' => 0.0,
             'monitor_frequency_hours' => $frequency,
-            'next_check_at'           => Carbon::now(),
+            'next_check_at' => Carbon::now(),
         ]);
 
-        $this->info("Блог добавлен на мониторинг.");
+        $this->info('Блог добавлен на мониторинг.');
         $this->table(
             ['ID', 'Источник', 'External ID', 'Частота'],
             [[$blog->id, $slug, $externalId, "{$frequency}ч"]],

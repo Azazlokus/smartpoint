@@ -26,12 +26,11 @@ final class ThrottleBySource
     private const int RELEASE_DELAY = 30;
 
     /**
-     * @param  MonitorBlogJob  $job
      * @param  callable(MonitorBlogJob): void  $next
      */
     public function handle(MonitorBlogJob $job, callable $next): void
     {
-        $key = 'adapter:' . $job->getBlog()->resource->slug;
+        $key = 'adapter:'.$job->getBlog()->resource->slug;
 
         $executed = RateLimiter::attempt(
             key: $key,

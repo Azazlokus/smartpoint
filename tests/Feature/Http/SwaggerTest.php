@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -51,21 +52,21 @@ final class SwaggerTest extends TestCase
 
     // ── Пути ─────────────────────────────────────────────────────────────────
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('endpointProvider')]
+    #[DataProvider('endpointProvider')]
     public function test_endpoint_exists(string $path, string $method): void
     {
-        $this->assertArrayHasKey($path,   $this->spec['paths'],         "Путь {$path} не найден в спецификации");
-        $this->assertArrayHasKey($method, $this->spec['paths'][$path],  "Метод {$method} не найден для {$path}");
+        $this->assertArrayHasKey($path, $this->spec['paths'], "Путь {$path} не найден в спецификации");
+        $this->assertArrayHasKey($method, $this->spec['paths'][$path], "Метод {$method} не найден для {$path}");
     }
 
     /** @return array<string, array{string, string}> */
     public static function endpointProvider(): array
     {
         return [
-            'GET /blogs'        => ['/blogs',      'get'],
-            'POST /blogs'       => ['/blogs',      'post'],
-            'GET /blogs/{id}'   => ['/blogs/{id}', 'get'],
-            'DELETE /blogs/{id}'=> ['/blogs/{id}', 'delete'],
+            'GET /blogs' => ['/blogs',      'get'],
+            'POST /blogs' => ['/blogs',      'post'],
+            'GET /blogs/{id}' => ['/blogs/{id}', 'get'],
+            'DELETE /blogs/{id}' => ['/blogs/{id}', 'delete'],
         ];
     }
 
@@ -100,13 +101,13 @@ final class SwaggerTest extends TestCase
 
     // ── Схемы ─────────────────────────────────────────────────────────────────
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('schemaProvider')]
+    #[DataProvider('schemaProvider')]
     public function test_schema_exists(string $schema): void
     {
         $this->assertArrayHasKey(
             $schema,
             $this->spec['components']['schemas'],
-            "Схема {$schema} не найдена в components/schemas"
+            "Схема {$schema} не найдена в components/schemas",
         );
     }
 
@@ -114,12 +115,12 @@ final class SwaggerTest extends TestCase
     public static function schemaProvider(): array
     {
         return [
-            'Blog'             => ['Blog'],
-            'BlogCollection'   => ['BlogCollection'],
-            'BlogResponse'     => ['BlogResponse'],
-            'ResourceObject'   => ['ResourceObject'],
+            'Blog' => ['Blog'],
+            'BlogCollection' => ['BlogCollection'],
+            'BlogResponse' => ['BlogResponse'],
+            'ResourceObject' => ['ResourceObject'],
             'StoreBlogRequest' => ['StoreBlogRequest'],
-            'ValidationError'  => ['ValidationError'],
+            'ValidationError' => ['ValidationError'],
         ];
     }
 
@@ -134,11 +135,11 @@ final class SwaggerTest extends TestCase
 
     public function test_store_request_schema_has_required_fields(): void
     {
-        $schema   = $this->spec['components']['schemas']['StoreBlogRequest'];
+        $schema = $this->spec['components']['schemas']['StoreBlogRequest'];
         $required = $schema['required'] ?? [];
 
-        $this->assertContains('resource_id',             $required);
-        $this->assertContains('external_id',             $required);
+        $this->assertContains('resource_id', $required);
+        $this->assertContains('external_id', $required);
         $this->assertContains('monitor_frequency_hours', $required);
     }
 
@@ -206,7 +207,7 @@ final class SwaggerTest extends TestCase
     public function test_store_and_show_responses_ref_blog_response(): void
     {
         $storeRef = $this->spec['paths']['/blogs']['post']['responses']['201']['content']['application/json']['schema']['$ref'];
-        $showRef  = $this->spec['paths']['/blogs/{id}']['get']['responses']['200']['content']['application/json']['schema']['$ref'];
+        $showRef = $this->spec['paths']['/blogs/{id}']['get']['responses']['200']['content']['application/json']['schema']['$ref'];
 
         $this->assertSame('#/components/schemas/BlogResponse', $storeRef);
         $this->assertSame('#/components/schemas/BlogResponse', $showRef);

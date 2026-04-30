@@ -2,21 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Api\V1;
 
 use App\Support\Api;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-final class StoreBlogRequest extends FormRequest
+final class UpdateBlogRequest extends FormRequest
 {
     /** @return array<string, list<string>> */
     public function rules(): array
     {
         return [
-            'resource_id' => ['required', 'integer', 'exists:resources,id'],
-            'external_id' => ['required', 'string', 'max:255'],
             'monitor_frequency_hours' => ['required', 'integer', 'between:4,8'],
         ];
     }
@@ -25,9 +23,7 @@ final class StoreBlogRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'resource_id.required' => 'Укажите источник (resource_id).',
-            'resource_id.exists' => 'Источник с указанным ID не найден.',
-            'external_id.required' => 'Укажите внешний идентификатор блога.',
+            'monitor_frequency_hours.required' => 'Укажите частоту мониторинга.',
             'monitor_frequency_hours.between' => 'Частота мониторинга должна быть от 4 до 8 часов.',
         ];
     }

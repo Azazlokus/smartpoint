@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant S as Scheduler
+    participant D as DispatchMonitoringJobs
+    participant DB as Database
+    participant Q as Queue
+    participant TH as ThrottleBySource
+    participant J as MonitorBlogJob
+    participant M as MonitoringService
+    participant A as Adapter
+
+    S->>D: artisan monitoring:dispatch
+    D->>DB: SELECT blogs WHERE next_check_at <= now()
+    DB-->>D: список блогов
+    D->>Q: MonitorBlogJob::dispatch x N
+
+    Q->>TH: handle(job, next)
+    alt лимит исчерпан
+        TH->>Q: job->release(30s)
+    else лимит не исчерпан
+        TH->>J: next(job)
+        J->>M: monitor(blog)
+        M->>A: fetchBlogMeta + fetchPosts
+        A-->>M: BlogMetaDTO + PostDTO[]
+        M->>DB: TRANSACTION upsert posts + log
+        J->>DB: next_check_at += frequency_hours
+    end

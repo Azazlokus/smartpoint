@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\BlogFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -29,7 +31,7 @@ use Illuminate\Support\Carbon;
 final class Blog extends Model
 {
     /** @use HasFactory<BlogFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'resource_id',
@@ -40,13 +42,39 @@ final class Blog extends Model
         'author',
         'monitor_frequency_hours',
         'next_check_at',
+        'last_monitored_at',
+        'monitoring_failures',
     ];
 
     protected $casts = [
         'rating' => 'float',
         'monitor_frequency_hours' => 'integer',
+        'monitoring_failures' => 'integer',
         'next_check_at' => 'datetime',
+        'last_monitored_at' => 'datetime',
     ];
+
+    /**
+     * Блоги, у которых наступило время следующей проверки.
+     *
+     * @param  Builder<Blog>  $query
+     * @return Builder<Blog>
+     */
+    public function scopeDueForMonitoring(Builder $query): Builder
+    {
+        return $query->where('next_check_at', '<=', Carbon::now());
+    }
+
+    /**
+     * Блоги с активным источником данных.
+     *
+     * @param  Builder<Blog>  $query
+     * @return Builder<Blog>
+     */
+    public function scopeWithActiveResource(Builder $query): Builder
+    {
+        return $query->whereHas('resource', fn (Builder $q) => $q->where('is_active', true));
+    }
 
     /**
      * Источник данных, к которому принадлежит блог.

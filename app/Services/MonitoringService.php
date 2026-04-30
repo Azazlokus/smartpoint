@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Adapters\Contracts\AdapterFactoryInterface;
-use App\DTO\BlogMetaDTO;
 use App\DTO\PostDTO;
+use App\Events\NewPostsDiscovered;
 use App\Models\Blog;
 use App\Models\MonitoringLog;
 use App\Services\Contracts\MonitoringServiceInterface;
@@ -24,53 +24,43 @@ final class MonitoringService implements MonitoringServiceInterface
     {
         $adapter = $this->adapterFactory->make($blog->resource->slug);
 
-        // Получаем данные из источника ДО открытия транзакции —
-        // держать соединение с БД открытым во время сетевого вызова опасно.
-        $meta  = $adapter->fetchBlogMeta($blog->external_id);
+        $meta = $adapter->fetchBlogMeta($blog->external_id);
         $posts = $adapter->fetchPosts($blog->external_id);
 
-        // Все записи в БД атомарны: если любой шаг упадёт —
-        // блог останется в исходном состоянии и джоб уйдёт на retry.
-        $newPosts = [];
-
-        DB::transaction(function () use ($blog, $meta, $posts, &$newPosts): void {
-            $this->updateBlogMeta($blog, $meta);
+        $newPosts = DB::transaction(function () use ($blog, $meta, $posts): array {
+            $now = Carbon::now();
 
             $newPosts = $this->syncPosts($blog, $posts);
 
             MonitoringLog::create([
-                'blog_id'   => $blog->id,
-                'date'      => Carbon::now(),
+                'blog_id' => $blog->id,
+                'date' => $now,
                 'new_posts' => $newPosts,
             ]);
 
-            // Фиксируем успешный цикл: сбрасываем счётчик неудач.
             $blog->update([
-                'last_monitored_at'   => Carbon::now(),
+                'name' => $meta->name,
+                'rating' => $meta->rating,
+                'cat_name' => $meta->catName,
+                'author' => $meta->author,
+                'last_monitored_at' => $now,
                 'monitoring_failures' => 0,
             ]);
+
+            return $newPosts;
         });
 
         Log::info('monitoring.completed', [
-            'blog_id'       => $blog->id,
-            'external_id'   => $blog->external_id,
-            'source'        => $blog->resource->slug,
+            'blog_id' => $blog->id,
+            'external_id' => $blog->external_id,
+            'source' => $blog->resource->slug,
             'posts_fetched' => count($posts),
-            'new_posts'     => count($newPosts),
+            'new_posts' => count($newPosts),
         ]);
-    }
 
-    /**
-     * Обновляет поля блога из полученных метаданных источника.
-     */
-    private function updateBlogMeta(Blog $blog, BlogMetaDTO $meta): void
-    {
-        $blog->update([
-            'name' => $meta->name,
-            'rating' => $meta->rating,
-            'cat_name' => $meta->catName,
-            'author' => $meta->author,
-        ]);
+        if ($newPosts !== []) {
+            NewPostsDiscovered::dispatch($blog, $newPosts);
+        }
     }
 
     /**
@@ -81,42 +71,27 @@ final class MonitoringService implements MonitoringServiceInterface
      */
     private function syncPosts(Blog $blog, array $posts): array
     {
-        // Собираем external_id постов, которые уже есть в БД до синхронизации
         /** @var string[] $existingExternalIds */
         $existingExternalIds = $blog->posts()->pluck('external_id')->all();
-        $fetchedExternalIds = $this->extractExternalIds($posts);
+        $fetchedExternalIds = array_map(fn (PostDTO $post) => $post->externalId, $posts);
 
-        // Upsert всех полученных постов одним запросом
         if ($posts !== []) {
             DB::table('posts')->upsert(
-                $this->buildUpsertRows($blog, $posts),
+                $this->buildUpsertRows($blog->id, $posts),
                 ['blog_id', 'external_id'],
                 ['title', 'body', 'rating', 'reactions', 'updated_at'],
             );
         }
 
-        // Удаляем посты, которые исчезли из источника
         $toDelete = array_diff($existingExternalIds, $fetchedExternalIds);
 
         if ($toDelete !== []) {
             $blog->posts()->whereIn('external_id', array_values($toDelete))->delete();
         }
 
-        // Определяем, какие посты появились впервые
         $newExternalIds = array_flip(array_diff($fetchedExternalIds, $existingExternalIds));
 
-        return $this->buildNewPostsList($posts, $newExternalIds);
-    }
-
-    /**
-     * Извлекает массив external_id из списка DTO.
-     *
-     * @param  PostDTO[]  $posts
-     * @return string[]
-     */
-    private function extractExternalIds(array $posts): array
-    {
-        return array_map(self::getExternalId(...), $posts);
+        return $this->filterNewPostsForLog($posts, $newExternalIds);
     }
 
     /**
@@ -125,48 +100,11 @@ final class MonitoringService implements MonitoringServiceInterface
      * @param  PostDTO[]  $posts
      * @return array<int, array<string, mixed>>
      */
-    private function buildUpsertRows(Blog $blog, array $posts): array
+    private function buildUpsertRows(int $blogId, array $posts): array
     {
         $now = Carbon::now()->toDateTimeString();
 
-        return array_map(
-            static fn (PostDTO $post): array => self::postToUpsertRow($blog->id, $post, $now),
-            $posts,
-        );
-    }
-
-    /**
-     * Возвращает только те посты, которые появились впервые (не было в БД).
-     *
-     * @param  PostDTO[]  $posts
-     * @param  array<string, int>  $newExternalIds  флип-индекс новых external_id
-     * @return array<int, array{external_id: string, title: string}>
-     */
-    private function buildNewPostsList(array $posts, array $newExternalIds): array
-    {
-        $onlyNewPosts = array_filter($posts, self::isNewPost($newExternalIds));
-
-        return array_values(array_map(self::postToLogEntry(...), $onlyNewPosts));
-    }
-
-    // ── Колбеки ──────────────────────────────────────────────────────────────
-
-    /**
-     * Возвращает external_id поста.
-     */
-    private static function getExternalId(PostDTO $post): string
-    {
-        return $post->externalId;
-    }
-
-    /**
-     * Сериализует DTO в строку для upsert-запроса.
-     *
-     * @return array<string, mixed>
-     */
-    private static function postToUpsertRow(int $blogId, PostDTO $post, string $now): array
-    {
-        return [
+        return array_map(fn (PostDTO $post): array => [
             'blog_id' => $blogId,
             'external_id' => $post->externalId,
             'title' => $post->title,
@@ -175,30 +113,21 @@ final class MonitoringService implements MonitoringServiceInterface
             'reactions' => json_encode($post->reactions, JSON_THROW_ON_ERROR),
             'created_at' => $now,
             'updated_at' => $now,
-        ];
+        ], $posts);
     }
 
     /**
-     * Предикат: пост является новым (отсутствовал в БД до синхронизации).
+     * Возвращает только новые посты в формате для MonitoringLog.
      *
-     * @param  array<string, int>  $newExternalIds
-     * @return callable(PostDTO): bool
+     * @param  PostDTO[]  $posts
+     * @param  array<string, int>  $newExternalIds  флип-индекс новых external_id
+     * @return array<int, array{external_id: string, title: string}>
      */
-    private static function isNewPost(array $newExternalIds): callable
+    private function filterNewPostsForLog(array $posts, array $newExternalIds): array
     {
-        return static fn (PostDTO $post): bool => isset($newExternalIds[$post->externalId]);
-    }
-
-    /**
-     * Преобразует DTO в краткую запись для лога мониторинга.
-     *
-     * @return array{external_id: string, title: string}
-     */
-    private static function postToLogEntry(PostDTO $post): array
-    {
-        return [
-            'external_id' => $post->externalId,
-            'title' => $post->title,
-        ];
+        return array_values(array_map(
+            fn (PostDTO $post): array => ['external_id' => $post->externalId, 'title' => $post->title],
+            array_filter($posts, fn (PostDTO $post): bool => isset($newExternalIds[$post->externalId])),
+        ));
     }
 }

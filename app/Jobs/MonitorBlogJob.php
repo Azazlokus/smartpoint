@@ -7,7 +7,6 @@ namespace App\Jobs;
 use App\Jobs\Middleware\ThrottleBySource;
 use App\Models\Blog;
 use App\Services\Contracts\MonitoringServiceInterface;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,11 +14,22 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
+final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** Максимальное количество попыток выполнения. */
+    public int $tries = 3;
+
+    /**
+     * Задержки между попытками: 1 мин → 2 мин → 5 мин.
+     *
+     * @var int[]
+     */
+    public array $backoff = [60, 120, 300];
 
     /**
      * Время (в секундах), в течение которого задача считается уникальной.
@@ -28,16 +38,16 @@ final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
     public int $uniqueFor = 3600;
 
     /**
-     * Максимальное количество попыток выполнения.
+     * Максимальное время выполнения задачи.
+     * Защищает воркер от зависания при недоступном источнике.
      */
-    public int $tries = 3;
+    public int $timeout = 120;
 
     /**
-     * Задержка (в секундах) перед каждой повторной попыткой.
-     *
-     * @var int[]
+     * Если блог был удалён (soft delete) пока джоб ждал в очереди —
+     * тихо отбросить задачу вместо падения с "Model not found".
      */
-    public array $backoff = [60, 120, 300];
+    public bool $deleteWhenMissingModels = true;
 
     public function __construct(
         private readonly Blog $blog,
@@ -75,6 +85,10 @@ final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(MonitoringServiceInterface $monitoringService): void
     {
+        // SerializesModels восстанавливает модель из БД, но не её relations.
+        // Загружаем resource явно, чтобы избежать N+1 при обращениях к $blog->resource->slug.
+        $this->blog->loadMissing('resource');
+
         $monitoringService->monitor($this->blog);
 
         $this->scheduleNextCheck();
@@ -86,15 +100,21 @@ final class MonitorBlogJob implements ShouldQueue, ShouldBeUnique
      */
     public function failed(Throwable $exception): void
     {
+        $this->blog->loadMissing('resource');
+
+        // Считаем новое значение до increment() — после него модель в памяти
+        // не обновляется, и $this->blog->monitoring_failures было бы устаревшим.
+        $failuresAfter = $this->blog->monitoring_failures + 1;
+
         $this->blog->increment('monitoring_failures');
         $this->scheduleNextCheck();
 
         Log::error('monitoring.failed', [
-            'blog_id'            => $this->blog->id,
-            'external_id'        => $this->blog->external_id,
-            'source'             => $this->blog->resource->slug,
-            'monitoring_failures' => $this->blog->monitoring_failures,
-            'error'              => $exception->getMessage(),
+            'blog_id' => $this->blog->id,
+            'external_id' => $this->blog->external_id,
+            'source' => $this->blog->resource->slug,
+            'monitoring_failures' => $failuresAfter,
+            'error' => $exception->getMessage(),
         ]);
     }
 

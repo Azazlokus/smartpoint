@@ -15,12 +15,13 @@ Artisan::command('inspire', function (): void {
 
 /*
 |--------------------------------------------------------------------------
-| Monitoring Scheduler
+| Планировщик мониторинга
 |--------------------------------------------------------------------------
 |
-| Dispatch monitoring jobs every minute. The job itself skips blogs whose
-| next_check_at is still in the future, so running this command frequently
-| is safe and ensures timely processing even at high blog volumes.
+| Диспатчит задачи мониторинга каждую минуту. Команда выбирает только те
+| блоги, у которых наступило время проверки (next_check_at <= now()), поэтому
+| частый запуск безопасен и обеспечивает точность планирования при большом
+| количестве блогов.
 |
 */
 

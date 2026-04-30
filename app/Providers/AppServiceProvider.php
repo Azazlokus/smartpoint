@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Adapters\AdapterFactory;
+use App\Adapters\BlogSourceAdapter;
 use App\Adapters\Contracts\AdapterFactoryInterface;
+use App\Events\NewPostsDiscovered;
+use App\Listeners\LogNewPostsDiscovered;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -18,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
         // AdapterFactory получает карту адаптеров из config/monitoring.php.
         // Добавить новый источник = одна строка в конфиге, без правки фабрики.
         $this->app->singleton(AdapterFactoryInterface::class, function (): AdapterFactory {
-            /** @var array<string, class-string<\App\Adapters\BlogSourceAdapter>> $adapters */
+            /** @var array<string, class-string<BlogSourceAdapter>> $adapters */
             $adapters = config('monitoring.adapters', []);
 
             return new AdapterFactory($adapters);
@@ -30,6 +34,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Event::listen(NewPostsDiscovered::class, LogNewPostsDiscovered::class);
     }
 }
