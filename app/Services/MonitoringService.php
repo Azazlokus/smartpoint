@@ -77,19 +77,8 @@ final class MonitoringService implements MonitoringServiceInterface
         $fetchedExternalIds = array_map(fn (PostDTO $post) => $post->externalId, $posts);
 
         if ($posts !== []) {
-            $now = Carbon::now()->toDateTimeString();
-
             DB::table('posts')->upsert(
-                array_map(fn (PostDTO $post): array => [
-                    'blog_id' => $blog->id,
-                    'external_id' => $post->externalId,
-                    'title' => $post->title,
-                    'body' => $post->body,
-                    'rating' => $post->rating,
-                    'reactions' => json_encode($post->reactions, JSON_THROW_ON_ERROR),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ], $posts),
+                $this->buildUpsertRows($blog->id, $posts),
                 ['blog_id', 'external_id'],
                 ['title', 'body', 'rating', 'reactions', 'updated_at'],
             );
@@ -103,6 +92,40 @@ final class MonitoringService implements MonitoringServiceInterface
 
         $newExternalIds = array_flip(array_diff($fetchedExternalIds, $existingExternalIds));
 
+        return $this->filterNewPostsForLog($posts, $newExternalIds);
+    }
+
+    /**
+     * Формирует строки для upsert: поля поста + blog_id + временны́е метки.
+     *
+     * @param  PostDTO[]  $posts
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildUpsertRows(int $blogId, array $posts): array
+    {
+        $now = Carbon::now()->toDateTimeString();
+
+        return array_map(fn (PostDTO $post): array => [
+            'blog_id' => $blogId,
+            'external_id' => $post->externalId,
+            'title' => $post->title,
+            'body' => $post->body,
+            'rating' => $post->rating,
+            'reactions' => json_encode($post->reactions, JSON_THROW_ON_ERROR),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $posts);
+    }
+
+    /**
+     * Возвращает только новые посты в формате для MonitoringLog.
+     *
+     * @param  PostDTO[]  $posts
+     * @param  array<string, int>  $newExternalIds  флип-индекс новых external_id
+     * @return array<int, array{external_id: string, title: string}>
+     */
+    private function filterNewPostsForLog(array $posts, array $newExternalIds): array
+    {
         return array_values(array_map(
             fn (PostDTO $post): array => ['external_id' => $post->externalId, 'title' => $post->title],
             array_filter($posts, fn (PostDTO $post): bool => isset($newExternalIds[$post->externalId])),
