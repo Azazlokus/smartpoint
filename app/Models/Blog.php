@@ -53,7 +53,7 @@ final class Blog extends Model
     /**
      * Блоги, у которых наступило время следующей проверки.
      *
-     * @param Builder<Blog> $query
+     * @param  Builder<Blog>  $query
      * @return Builder<Blog>
      */
     public function scopeDueForMonitoring(Builder $query): Builder
