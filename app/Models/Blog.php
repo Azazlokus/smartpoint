@@ -42,12 +42,16 @@ final class Blog extends Model
         'author',
         'monitor_frequency_hours',
         'next_check_at',
+        'last_monitored_at',
+        'monitoring_failures',
     ];
 
     protected $casts = [
         'rating' => 'float',
         'monitor_frequency_hours' => 'integer',
+        'monitoring_failures' => 'integer',
         'next_check_at' => 'datetime',
+        'last_monitored_at' => 'datetime',
     ];
 
     /**

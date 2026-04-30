@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Adapters\Contracts\AdapterFactoryInterface;
 use App\DTO\PostDTO;
+use App\Events\NewPostsDiscovered;
 use App\Models\Blog;
 use App\Models\MonitoringLog;
 use App\Services\Contracts\MonitoringServiceInterface;
@@ -56,6 +57,10 @@ final class MonitoringService implements MonitoringServiceInterface
             'posts_fetched' => count($posts),
             'new_posts' => count($newPosts),
         ]);
+
+        if ($newPosts !== []) {
+            NewPostsDiscovered::dispatch($blog, $newPosts);
+        }
     }
 
     /**

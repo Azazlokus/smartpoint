@@ -100,6 +100,8 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        $this->blog->loadMissing('resource');
+
         // Считаем новое значение до increment() — после него модель в памяти
         // не обновляется, и $this->blog->monitoring_failures было бы устаревшим.
         $failuresAfter = $this->blog->monitoring_failures + 1;

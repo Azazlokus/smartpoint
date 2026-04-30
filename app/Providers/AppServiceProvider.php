@@ -7,6 +7,9 @@ namespace App\Providers;
 use App\Adapters\AdapterFactory;
 use App\Adapters\BlogSourceAdapter;
 use App\Adapters\Contracts\AdapterFactoryInterface;
+use App\Events\NewPostsDiscovered;
+use App\Listeners\LogNewPostsDiscovered;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +34,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Event::listen(NewPostsDiscovered::class, LogNewPostsDiscovered::class);
     }
 }
