@@ -124,9 +124,6 @@ return [
             'replace_placeholders' => true,
         ],
 
-        // Отправляет структурированные JSON-логи в Logstash по TCP.
-        // Monolog LogstashFormatter создаёт формат, понятный ELK из коробки.
-        // Канал подключается лениво — если Logstash недоступен, лог просто пропустится.
         'logstash' => [
             'driver' => 'monolog',
             'handler' => SocketHandler::class,
