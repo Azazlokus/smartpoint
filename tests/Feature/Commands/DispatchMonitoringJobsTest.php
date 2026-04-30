@@ -8,6 +8,8 @@ use App\Jobs\MonitorBlogJob;
 use App\Models\Blog;
 use App\Models\Resource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -120,5 +122,63 @@ final class DispatchMonitoringJobsTest extends TestCase
         $this->artisan('monitoring:dispatch')
             ->expectsOutputToContain('0')
             ->assertSuccessful();
+    }
+
+    // ── --dry-run ────────────────────────────────────────────────────────────
+
+    public function test_dry_run_does_not_dispatch(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        Blog::factory()->for($resource)->due()->count(3)->create();
+
+        $this->artisan('monitoring:dispatch', ['--dry-run' => true])->assertSuccessful();
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_dry_run_still_counts_blogs(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        Blog::factory()->for($resource)->due()->count(3)->create();
+
+        $this->artisan('monitoring:dispatch', ['--dry-run' => true])
+            ->expectsOutputToContain('3 (dry-run)')
+            ->assertSuccessful();
+    }
+
+    // ── Защита от параллельного запуска ──────────────────────────────────────
+
+    public function test_skips_when_already_running(): void
+    {
+        Cache::lock('monitoring:dispatch', 120)->get();
+
+        $resource = Resource::factory()->mock()->create();
+        Blog::factory()->for($resource)->due()->create();
+
+        $this->artisan('monitoring:dispatch')
+            ->expectsOutputToContain('уже выполняется')
+            ->assertSuccessful();
+
+        Queue::assertNothingPushed();
+    }
+
+    // ── Структурированный лог ────────────────────────────────────────────────
+
+    public function test_logs_dispatch_completed(): void
+    {
+        Log::spy();
+
+        $resource = Resource::factory()->mock()->create();
+        Blog::factory()->for($resource)->due()->count(2)->create();
+
+        $this->artisan('monitoring:dispatch')->assertSuccessful();
+
+        Log::shouldHaveReceived('info')
+            ->with('monitoring.dispatch_completed', \Mockery::on(
+                fn ($ctx) => $ctx['dispatched'] === 2
+                    && isset($ctx['duration_ms'])
+                    && $ctx['dry_run'] === false,
+            ))
+            ->once();
     }
 }
