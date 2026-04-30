@@ -21,36 +21,27 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Максимальное количество попыток выполнения.
-     */
-    private const int MAX_TRIES = 3;
+    /** Максимальное количество попыток выполнения. */
+    public int $tries = 3;
 
     /**
      * Задержки между попытками: 1 мин → 2 мин → 5 мин.
+     *
+     * @var int[]
      */
-    private const array BACKOFF_SECONDS = [60, 120, 300];
+    public array $backoff = [60, 120, 300];
 
     /**
      * Время (в секундах), в течение которого задача считается уникальной.
      * Предотвращает параллельный мониторинг одного блога двумя воркерами.
      */
-    private const int UNIQUE_FOR_SECONDS = 3600;
+    public int $uniqueFor = 3600;
 
     /**
      * Максимальное время выполнения задачи.
      * Защищает воркер от зависания при недоступном источнике.
      */
-    private const int TIMEOUT_SECONDS = 120;
-
-    public int $tries = self::MAX_TRIES;
-
-    /** @var int[] */
-    public array $backoff = self::BACKOFF_SECONDS;
-
-    public int $uniqueFor = self::UNIQUE_FOR_SECONDS;
-
-    public int $timeout = self::TIMEOUT_SECONDS;
+    public int $timeout = 120;
 
     /**
      * Если блог был удалён (soft delete) пока джоб ждал в очереди —
