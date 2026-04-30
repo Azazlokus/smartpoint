@@ -62,6 +62,17 @@ final class Blog extends Model
     }
 
     /**
+     * Блоги с активным источником данных.
+     *
+     * @param  Builder<Blog>  $query
+     * @return Builder<Blog>
+     */
+    public function scopeWithActiveResource(Builder $query): Builder
+    {
+        return $query->whereHas('resource', fn (Builder $q) => $q->where('is_active', true));
+    }
+
+    /**
      * Источник данных, к которому принадлежит блог.
      *
      * @return BelongsTo<\App\Models\Resource, $this>

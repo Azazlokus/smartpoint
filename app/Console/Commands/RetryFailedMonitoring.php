@@ -31,7 +31,7 @@ final class RetryFailedMonitoring extends Command
 
         $blogs = Blog::query()
             ->where('monitoring_failures', '>=', $minFailures)
-            ->whereHas('resource', fn ($q) => $q->where('is_active', true))
+            ->withActiveResource()
             ->with('resource')
             ->get();
 

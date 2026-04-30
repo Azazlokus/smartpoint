@@ -26,7 +26,7 @@ final class DispatchMonitoringJobs extends Command
 
         Blog::query()
             ->dueForMonitoring()
-            ->whereHas('resource', fn ($q) => $q->where('is_active', true))
+            ->withActiveResource()
             ->with('resource')
             ->chunkById(100, function ($blogs) use (&$dispatched): void {
                 foreach ($blogs as $blog) {
