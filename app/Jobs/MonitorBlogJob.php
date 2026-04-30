@@ -22,22 +22,41 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * Максимальное количество попыток выполнения.
+     */
+    private const int MAX_TRIES = 3;
+
+    /**
+     * Задержки между попытками: 1 мин → 2 мин → 5 мин.
+     */
+    private const array BACKOFF_SECONDS = [60, 120, 300];
+
+    /**
      * Время (в секундах), в течение которого задача считается уникальной.
      * Предотвращает параллельный мониторинг одного блога двумя воркерами.
      */
-    public int $uniqueFor = 3600;
+    private const int UNIQUE_FOR_SECONDS = 3600;
 
     /**
-     * Максимальное количество попыток выполнения.
+     * Максимальное время выполнения задачи.
+     * Защищает воркер от зависания при недоступном источнике.
      */
-    public int $tries = 3;
+    private const int TIMEOUT_SECONDS = 120;
+
+    public int $tries = self::MAX_TRIES;
+
+    /** @var int[] */
+    public array $backoff = self::BACKOFF_SECONDS;
+
+    public int $uniqueFor = self::UNIQUE_FOR_SECONDS;
+
+    public int $timeout = self::TIMEOUT_SECONDS;
 
     /**
-     * Задержка (в секундах) перед каждой повторной попыткой.
-     *
-     * @var int[]
+     * Если блог был удалён (soft delete) пока джоб ждал в очереди —
+     * тихо отбросить задачу вместо падения с "Model not found".
      */
-    public array $backoff = [60, 120, 300];
+    public bool $deleteWhenMissingModels = true;
 
     public function __construct(
         private readonly Blog $blog,
@@ -86,6 +105,10 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        // Считаем новое значение до increment() — после него модель в памяти
+        // не обновляется, и $this->blog->monitoring_failures было бы устаревшим.
+        $failuresAfter = $this->blog->monitoring_failures + 1;
+
         $this->blog->increment('monitoring_failures');
         $this->scheduleNextCheck();
 
@@ -93,7 +116,7 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
             'blog_id' => $this->blog->id,
             'external_id' => $this->blog->external_id,
             'source' => $this->blog->resource->slug,
-            'monitoring_failures' => $this->blog->monitoring_failures,
+            'monitoring_failures' => $failuresAfter,
             'error' => $exception->getMessage(),
         ]);
     }
