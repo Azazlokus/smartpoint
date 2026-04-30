@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Console\Commands\DispatchMonitoringJobs;
-use App\Console\Commands\RetryFailedMonitoring;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -26,4 +25,3 @@ Artisan::command('inspire', function (): void {
 */
 
 Schedule::command(DispatchMonitoringJobs::class)->everyMinute();
-Schedule::command(RetryFailedMonitoring::class)->hourly();
