@@ -306,9 +306,38 @@ final class BlogControllerTest extends TestCase
             ->assertJsonCount(2, 'data.items.0.new_posts');
     }
 
+    // ── PATCH /api/v1/blogs/{id} ─────────────────────────────────────────────
+
+    public function test_update_changes_frequency(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create(['monitor_frequency_hours' => 4]);
+
+        $this->patchJson("/api/v1/blogs/{$blog->id}", ['monitor_frequency_hours' => 8])
+            ->assertOk()
+            ->assertJsonPath('data.monitor_frequency_hours', 8);
+
+        $this->assertDatabaseHas('blogs', ['id' => $blog->id, 'monitor_frequency_hours' => 8]);
+    }
+
+    public function test_update_validates_frequency_range(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+
+        $this->patchJson("/api/v1/blogs/{$blog->id}", ['monitor_frequency_hours' => 2])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['monitor_frequency_hours']);
+    }
+
+    public function test_update_returns_404_for_unknown_blog(): void
+    {
+        $this->patchJson('/api/v1/blogs/99999', ['monitor_frequency_hours' => 6])->assertNotFound();
+    }
+
     // ── DELETE /api/v1/blogs/{id} ────────────────────────────────────────────
 
-    public function test_destroy_removes_blog(): void
+    public function test_destroy_soft_deletes_blog(): void
     {
         $resource = Resource::factory()->mock()->create();
         $blog = Blog::factory()->for($resource)->create();
@@ -317,6 +346,26 @@ final class BlogControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Блог снят с мониторинга.');
 
-        $this->assertDatabaseMissing('blogs', ['id' => $blog->id]);
+        $this->assertSoftDeleted('blogs', ['id' => $blog->id]);
+    }
+
+    public function test_soft_deleted_blog_not_visible_in_index(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+        $blog->delete();
+
+        $this->getJson('/api/v1/blogs')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.items');
+    }
+
+    public function test_soft_deleted_blog_returns_404_on_show(): void
+    {
+        $resource = Resource::factory()->mock()->create();
+        $blog = Blog::factory()->for($resource)->create();
+        $blog->delete();
+
+        $this->getJson("/api/v1/blogs/{$blog->id}")->assertNotFound();
     }
 }

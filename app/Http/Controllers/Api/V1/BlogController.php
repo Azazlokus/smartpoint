@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\BlogIndexRequest;
+use App\Http\Requests\Api\V1\UpdateBlogRequest;
 use App\Http\Requests\StoreBlogRequest;
 use App\Http\Resources\BlogResource;
 use App\Http\Resources\MonitoringLogResource;
@@ -144,6 +145,38 @@ final class BlogController extends Controller
         $blog->load('resource');
 
         return Api::success('Блог найден.', (new BlogResource($blog))->toArray(request()));
+    }
+
+    /**
+     * Обновить настройки блога.
+     */
+    #[OA\Patch(
+        path: '/blogs/{id}',
+        summary: 'Обновить блог',
+        description: 'Изменяет частоту мониторинга блога.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/UpdateBlogRequest'),
+        ),
+        tags: ['Blogs'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID блога', schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Блог обновлён', content: new OA\JsonContent(ref: '#/components/schemas/BlogResponse')),
+            new OA\Response(response: 404, description: 'Блог не найден'),
+            new OA\Response(response: 422, description: 'Ошибка валидации', content: new OA\JsonContent(ref: '#/components/schemas/ValidationError')),
+        ],
+    )]
+    public function update(UpdateBlogRequest $request, Blog $blog): JsonResponse
+    {
+        $blog->update([
+            'monitor_frequency_hours' => $request->integer('monitor_frequency_hours'),
+        ]);
+
+        $blog->load('resource');
+
+        return Api::success('Настройки блога обновлены.', (new BlogResource($blog))->toArray($request));
     }
 
     /**

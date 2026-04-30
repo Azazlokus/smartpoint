@@ -132,6 +132,13 @@ use OpenApi\Attributes as OA;
     ],
 )]
 #[OA\Schema(
+    schema: 'UpdateBlogRequest',
+    required: ['monitor_frequency_hours'],
+    properties: [
+        new OA\Property(property: 'monitor_frequency_hours', type: 'integer', minimum: 4, maximum: 8, example: 6, description: 'Новая частота мониторинга (4–8 часов)'),
+    ],
+)]
+#[OA\Schema(
     schema: 'ValidationError',
     properties: [
         new OA\Property(property: 'message', type: 'string', example: 'Ошибка валидации.'),
