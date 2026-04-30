@@ -85,6 +85,10 @@ final class MonitorBlogJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(MonitoringServiceInterface $monitoringService): void
     {
+        // SerializesModels восстанавливает модель из БД, но не её relations.
+        // Загружаем resource явно, чтобы избежать N+1 при обращениях к $blog->resource->slug.
+        $this->blog->loadMissing('resource');
+
         $monitoringService->monitor($this->blog);
 
         $this->scheduleNextCheck();

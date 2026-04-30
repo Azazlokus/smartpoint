@@ -23,14 +23,9 @@ final class MonitoringService implements MonitoringServiceInterface
     {
         $adapter = $this->adapterFactory->make($blog->resource->slug);
 
-        // Получаем данные из источника ДО открытия транзакции —
-        // держать соединение с БД открытым во время сетевого вызова опасно.
         $meta = $adapter->fetchBlogMeta($blog->external_id);
         $posts = $adapter->fetchPosts($blog->external_id);
 
-        // DB::transaction возвращает значение из колбека — reference не нужен.
-        // Все записи в БД атомарны: если любой шаг упадёт —
-        // блог останется в исходном состоянии и джоб уйдёт на retry.
         $newPosts = DB::transaction(function () use ($blog, $meta, $posts): array {
             $now = Carbon::now();
 
@@ -42,7 +37,6 @@ final class MonitoringService implements MonitoringServiceInterface
                 'new_posts' => $newPosts,
             ]);
 
-            // Мета источника + сброс счётчика неудач — одним UPDATE вместо двух.
             $blog->update([
                 'name' => $meta->name,
                 'rating' => $meta->rating,
