@@ -1,0 +1,44 @@
+erDiagram
+    resources {
+        bigint id PK
+        string name
+        string slug UK
+        string url
+        boolean is_active
+    }
+
+    blogs {
+        bigint id PK
+        bigint resource_id FK
+        string external_id
+        string name
+        float rating
+        string cat_name
+        string author
+        tinyint monitor_frequency_hours
+        timestamp next_check_at
+        timestamp last_monitored_at
+        tinyint monitoring_failures
+        timestamp deleted_at
+    }
+
+    posts {
+        bigint id PK
+        bigint blog_id FK
+        string external_id
+        string title
+        text body
+        float rating
+        json reactions
+    }
+
+    monitoring_logs {
+        bigint id PK
+        bigint blog_id FK
+        datetime date
+        json new_posts
+    }
+
+    resources ||--o{ blogs : "has many"
+    blogs ||--o{ posts : "has many"
+    blogs ||--o{ monitoring_logs : "has many"

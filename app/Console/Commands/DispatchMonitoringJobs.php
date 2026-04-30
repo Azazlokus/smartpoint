@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Jobs\MonitorBlogJob;
 use App\Models\Blog;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
 final class DispatchMonitoringJobs extends Command
 {
@@ -26,7 +25,7 @@ final class DispatchMonitoringJobs extends Command
         $dispatched = 0;
 
         Blog::query()
-            ->where('next_check_at', '<=', Carbon::now())
+            ->dueForMonitoring()
             ->whereHas('resource', fn ($q) => $q->where('is_active', true))
             ->with('resource')
             ->chunkById(100, function ($blogs) use (&$dispatched): void {

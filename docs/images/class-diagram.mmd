@@ -1,0 +1,53 @@
+classDiagram
+    class BlogSourceAdapter {
+        <<interface>>
+        +fetchBlogMeta(externalId) BlogMetaDTO
+        +fetchPosts(externalId) PostDTO[]
+    }
+
+    class MockAdapter {
+        +fetchBlogMeta(externalId) BlogMetaDTO
+        +fetchPosts(externalId) PostDTO[]
+    }
+
+    class AdapterFactoryInterface {
+        <<interface>>
+        +make(slug) BlogSourceAdapter
+    }
+
+    class AdapterFactory {
+        -adapters array
+        +make(slug) BlogSourceAdapter
+    }
+
+    class MonitoringServiceInterface {
+        <<interface>>
+        +monitor(blog) void
+    }
+
+    class MonitoringService {
+        -factory AdapterFactoryInterface
+        +monitor(blog) void
+    }
+
+    class MonitorBlogJob {
+        +tries = 3
+        +backoff = [60,120,300]
+        +uniqueFor = 3600
+        +handle(service) void
+        +failed(exception) void
+    }
+
+    class ThrottleBySource {
+        -MAX_ATTEMPTS = 5
+        -DECAY_SECONDS = 60
+        +handle(job, next) void
+    }
+
+    BlogSourceAdapter <|.. MockAdapter
+    AdapterFactoryInterface <|.. AdapterFactory
+    MonitoringServiceInterface <|.. MonitoringService
+    AdapterFactory --> BlogSourceAdapter : resolves
+    MonitoringService --> AdapterFactoryInterface : uses
+    MonitorBlogJob --> ThrottleBySource : middleware
+    MonitorBlogJob --> MonitoringServiceInterface : uses

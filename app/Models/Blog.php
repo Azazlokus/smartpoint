@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\BlogFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,17 @@ final class Blog extends Model
         'monitor_frequency_hours' => 'integer',
         'next_check_at' => 'datetime',
     ];
+
+    /**
+     * Блоги, у которых наступило время следующей проверки.
+     *
+     * @param Builder<Blog> $query
+     * @return Builder<Blog>
+     */
+    public function scopeDueForMonitoring(Builder $query): Builder
+    {
+        return $query->where('next_check_at', '<=', Carbon::now());
+    }
 
     /**
      * Источник данных, к которому принадлежит блог.
